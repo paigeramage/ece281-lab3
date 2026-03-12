@@ -117,6 +117,7 @@ begin
 		
 		-- left light sequence
 		w_L <= '1';
+		w_R <= '0';
           assert w_lights_L = "000" report "bad L1" severity failure;
         -- left light 1
         wait for k_clk_period;
@@ -129,12 +130,16 @@ begin
             assert w_lights_L = "111" report "should have all left ON" severity failure;
         
         -- reset and test right light
-        w_reset <= '1'; w_L <= '0';
+        w_reset <= '1';
+        w_L <= '0';
+        w_R <= '0';
             wait for k_clk_period;
         w_reset <= '0';
         
         --testing OFF
         w_R <= '1';
+		w_L <= '0';
+
           assert w_lights_R = "000" report "bad R1" severity failure;
         --testing R1
         wait for k_clk_period;
