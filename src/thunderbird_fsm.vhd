@@ -36,20 +36,19 @@
 --|					can be changed by the inputs
 --|					
 --|
---|                 xxx State Encoding key
+--|                 One-Hot State Encoding key
 --|                 --------------------
 --|                  State | Encoding
 --|                 --------------------
---|                  OFF   | 
---|                  ON    | 
---|                  R1    | 
---|                  R2    | 
---|                  R3    | 
---|                  L1    | 
---|                  L2    | 
---|                  L3    | 
+--|                  OFF   | 10000000
+--|                  ON    | 01000000
+--|                  R1    | 00100000
+--|                  R2    | 00010000
+--|                  R3    | 00001000
+--|                  L1    | 00000100
+--|                  L2    | 00000010
+--|                  L3    | 00000001
 --|                 --------------------
---|
 --|
 --+----------------------------------------------------------------------------
 --|
@@ -86,23 +85,78 @@ library ieee;
   use ieee.numeric_std.all;
  
 entity thunderbird_fsm is 
---  port(
-	
---  );
+    port (
+        i_clk, i_reset  : in    std_logic;
+        i_left, i_right : in    std_logic;
+        o_lights_L      : out   std_logic_vector(2 downto 0);
+        o_lights_R      : out   std_logic_vector(2 downto 0)
+    );
 end thunderbird_fsm;
 
 architecture thunderbird_fsm_arch of thunderbird_fsm is 
 
 -- CONSTANTS ------------------------------------------------------------------
-  
+    signal f_Q :      std_logic_vector(7 downto 0) := "10000000";
+    signal f_Q_next : std_logic_vector(7 downto 0);
+
 begin
 
 	-- CONCURRENT STATEMENTS --------------------------------------------------------	
+    -- Next state logic
+    process(f_Q, i_left, i_right)
+    begin
+        if f_Q(6)='1' or f_Q(3)='1' or f_Q(0)='1' or (i_left='0' AND i_right='0') then
+           f_Q_next <= "10000000"; --OFF
+        elsif (i_left='1' AND i_right='1') then 
+           f_Q_next <= "01000000"; --ON
+        elsif f_Q(7)='1' AND i_right='1' then 
+           f_Q_next <= "00100000"; --RA
+        elsif f_Q(5)='1' then --RA
+           f_Q_next <= "00010000"; --RB
+        elsif f_Q(4)='1' then --RB
+           f_Q_next <= "00001000"; --RC
+        elsif i_left='1' AND f_Q(7)='1' then 
+           f_Q_next <= "00000100"; --LA
+        elsif f_Q(2)='1' then --LA
+           f_Q_next <= "00000010"; --LB
+        elsif f_Q(1)='1' then --LB
+           f_Q_next <= "00000001"; --LC
+        else
+           f_Q_next <= "10000000"; --default to OFF
+        end if;
 	
-    ---------------------------------------------------------------------------------
+	-- Output logic
+	    if f_Q(6)='1' then --ON
+	       o_lights_L <= "111";
+	       o_lights_R <= "111";
+	    elsif f_Q(0)='1' then --L3
+	       o_lights_L <= "111";
+	    elsif f_Q(2)='1' then --L1
+	       o_lights_L <= "001";
+	    elsif f_Q(1)='1' then --L2
+	       o_lights_L <= "011";
+	    elsif f_Q(3)='1' then --R3
+	       o_lights_R <= "111";
+	    elsif f_Q(5)='1' then --R1
+	       o_lights_R <= "001";
+	    elsif f_Q(4)='1' then --R2
+	       o_lights_R <= "011";
+	    else                  --OFF
+	       o_lights_R <= "000"; 
+	       o_lights_L <= "000";
+	    end if;
+	end process;
+	---------------------------------------------------------------------------------
 	
 	-- PROCESSES --------------------------------------------------------------------
-    
+    register_proc : process (i_clk, i_reset)
+    begin
+        if i_reset = '1' then
+            f_Q <= "10000000";
+        elsif (rising_edge(i_clk)) then
+            f_Q <= f_Q_next;    -- next state becomes current state
+        end if;
+    end process register_proc;
 	-----------------------------------------------------					   
 				  
 end thunderbird_fsm_arch;
